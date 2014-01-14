@@ -586,6 +586,8 @@ class RobotCalculations:
 
 	########################################################################
 
+	#TODO refactor main() into smaller components
+
 	def main(self):
 		"""Evaluate direction and pick a stance."""
 
