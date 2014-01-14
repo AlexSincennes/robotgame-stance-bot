@@ -253,7 +253,8 @@ class LocalData:
 		Robot[] immediate_enemies
 
 	Public methods:
-		Robot[] enemies_around(location, player_id)"""
+		Robot[] enemies_around(location, player_id)
+		Robot[] friends_around(location, player_id)"""
 
 	def __init__(self, robot, game):
 
@@ -310,6 +311,13 @@ class LocalData:
 
 		return actual_enemies
 
+	def friends_around(self, location, player_id):
+		"""Return list of friends around that tile."""
+
+		for loc in self.game.robots:
+			if self.game.robots[loc].player_id != player_id:
+				return self.enemies_around(location, self.game.robots[loc].player_id)
+
 
 	########################################################################
 
@@ -339,7 +347,7 @@ class RobotCalculations:
 		"""Set robot's ultimate direction based on situation of quadrant."""
 
 		# very early game -> head to center
-		if self.game.turn < rg.settings.spawn_every / 3:
+		if self.game.turn <= rg.settings.spawn_every / 3:
 			return rg.CENTER_POINT
 		# later game -> context specific
 		else:
@@ -409,7 +417,7 @@ class RobotCalculations:
 		"""Ignores neighbours, otherwise moves to towards.
 		
 		Preconditions:
-			can move into a safe location or where a friend used to be"""
+			towards safe location or where a leaving friend is."""
 
 		print "passive_stance"
 
@@ -568,19 +576,17 @@ class RobotCalculations:
 
 
 	def __friendly_running_into_me(self, move_loc):
-		"""Avoid wasting a turn running into a friendly."""
+		"""Avoid wasting a turn running into a friendly.
+		Returns true if a friendly has been predicted to be entering that location."""
 
 		if self.recursion_count < self.max_recursive:
-			for loc, bot in self.arena_data.game.robots.iteritems():
-				if bot.player_id == self.robot.player_id and bot.robot_id != self.robot.robot_id:
-					if rg.dist(loc, move_loc) <= 1:
-						#print "friendlies beside my move tile" # (overly simplified)
-						self.recursion_count += 1
-						rec_robo_calc = RobotCalculations(bot, self.game, self.recursion_count)
-						self.recursion_count -= 1
-						if move_loc in rec_robo_calc.main():
-							#print "friendlies running into me"
-							return True
+			for friend in self.local_data.friends_around(move_loc, self.robot.player_id):
+				self.recursion_count += 1
+				rec_robo_calc = RobotCalculations(friend, self.game, self.recursion_count)
+				self.recursion_count -= 1
+				if move_loc in rec_robo_calc.main():
+					#print "friendlies running into me"
+					return True
 
 		return False
 
@@ -619,6 +625,7 @@ class RobotCalculations:
 						return self.endangered_stance()
 					else:
 						return self.__passive_stance(random.choice(self.local_data.safe_locs))
+			
 				# can move to non-spawn
 				else:
 					if not self.local_data.safe_locs:
@@ -642,7 +649,7 @@ class RobotCalculations:
 				elif self.local_data.safe_locs:
 					return self.__passive_stance(random.choice(self.local_data.safe_locs))
 				else:
-					return cautious_stance(toward_loc)
+					return self.__cautious_stance(toward_loc)
 					
 
 		# normal location 
@@ -664,21 +671,21 @@ class RobotCalculations:
 								rec_robo_calc = RobotCalculations(f, self.game)
 								fmove = rec_robo_calc.main()
 								if 'move' in fmove:
-									return passive_stance(fmove[1])
+									return self.__passive_stance(fmove[1])
 
 						# other cases where robot is lethally threatened:
 						# if all enemies 'occupied' with friends, guarded stance
 						# else endangered stance (surrounded with no help)
 						for e in self.local_data.immediate_enemies:
 							if not (len(self.local_data.enemies_around(e.location, e.player_id)) <= 1):
-								return self.endangered_stance()
+								return self.__endangered_stance()
 
 						return self.__guarded_stance()
 
 				# not a lethal threat or no threat:
 				# stance based on our destination this time
 				if toward_loc in self.local_data.safe_locs:
-					print "entry into aggresstive from dispatcher"
+					print "entry into aggressive from dispatcher"
 					return self.__aggressive_stance(toward_loc)
 				else:
 					return self.__cautious_stance(toward_loc)
