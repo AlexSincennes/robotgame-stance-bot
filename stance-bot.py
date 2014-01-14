@@ -110,20 +110,20 @@ class ArenaData:
 
 		self.total_friends = []
 		self.total_foes = []
-		self._index_bots()
+		self.__index_bots()
 
 
 		self.quadrants = [Quadrant(1, self), Quadrant(2, self), Quadrant(3, self), Quadrant(4, self)]
 
-		self.current_quad_num = self._find_quad()
+		self.current_quad_num = self.__find_quad()
 
 		self.group = []
-		self._find_group(self.group, [], local_data)
+		self.__find_group(self.group, [], local_data)
 
-		self.regroup_quad_num = self._find_regroup_quad()
+		self.regroup_quad_num = self.__find_regroup_quad()
 
 
-	def _find_regroup_quad(self):
+	def __find_regroup_quad(self):
 
 		if len(self.get_current_quadrant().quad_foes) == 0:
 			this_quad_ratio = 0
@@ -143,7 +143,7 @@ class ArenaData:
 
 
 
-	def _find_group(self, group, visited, local_data):
+	def __find_group(self, group, visited, local_data):
 		"""Helper method. Finds coherent group robot is attached to, if exists"""
 
 		# find immediate friends
@@ -159,7 +159,7 @@ class ArenaData:
 				self._find_group(group, visited, LocalData(rob, local_data.game))
 
 
-	def _index_bots(self):
+	def __index_bots(self):
 		"""Helper method. Index all robots by friend and foe."""
 
 		for loc, rob in self.game.robots.items():
@@ -169,7 +169,7 @@ class ArenaData:
 			else:
 				self.total_foes.append(rob)
 
-	def _find_quad(self):
+	def __find_quad(self):
 		"""Helper method. Find which quadrant the robot belongs to."""
 
 		for num in range(1,5):
@@ -314,7 +314,10 @@ class LocalData:
 	########################################################################
 
 class RobotCalculations:
-	"""Wrapper class around a robot and game, to permit recursion."""
+	"""Wrapper class around a robot and game, to permit recursion.
+
+		Public methods:
+			robotgame-move main()"""
 
 	def __init__(self, robot, game, recursion_count = 0):
 
@@ -332,7 +335,7 @@ class RobotCalculations:
 	########################################################################
 
 
-	def evaluate_direction(self):
+	def __evaluate_direction(self):
 		"""Set robot's ultimate direction based on situation of quadrant."""
 
 		# very early game -> head to center
@@ -356,7 +359,7 @@ class RobotCalculations:
 	# set of LOCAL STANCE METHODS which return a move
 	# TODO put reused code in seperate methods
 
-	def endangered_stance(self):
+	def __endangered_stance(self):
 		"""Simply suicide for now.
 		
 		Preconditions:
@@ -367,7 +370,7 @@ class RobotCalculations:
 
 		return ['suicide']
 
-	def cautious_stance(self, towards, recursive = False):
+	def __cautious_stance(self, towards, recursive = False):
 		"""Attacks neighbours, then tries to help friends, otherwise attacks towards.
 		
 		Preconditions:
@@ -383,26 +386,26 @@ class RobotCalculations:
 				for loc, bot in self.arena_data.game.robots.iteritems():
 					if bot.player_id != self.robot.player_id:
 						if rg.dist(loc, self.robot.location) <= 3:
-							return self.cautious_stance(rg.toward(self.robot.location, loc), recursive=True)
+							return self.__cautious_stance(rg.toward(self.robot.location, loc), recursive=True)
 
 			# help adjacent allies as second priority
 			for loc in self.local_data.unobstructed_locs:
-				if self.can_flank_enemy_safely(loc):
+				if self.__can_flank_enemy_safely(loc):
 					if not recursive:
-						if not self.friendly_running_into_me(loc):
+						if not self.__friendly_running_into_me(loc):
 							return ['move', loc]
 					else:
 						return ['move', loc]
 
 			# attack immediate neighbours first
-			possible_attack = self.attack_if_beside(self.robot)
+			possible_attack = self.__attack_if_beside(self.robot)
 			if possible_attack:
 				return possible_attack
 
 		# attack possible enemy move locations
 		return ['attack', towards]
 
-	def passive_stance(self, towards, recursive=False):
+	def __passive_stance(self, towards, recursive=False):
 		"""Ignores neighbours, otherwise moves to towards.
 		
 		Preconditions:
@@ -418,29 +421,29 @@ class RobotCalculations:
 				for loc, bot in self.game.robots.iteritems():
 					if bot.player_id != self.robot.player_id:
 						if rg.dist(loc, self.robot.location) <= 3:
-							return self.aggressive_stance(rg.toward(loc), recursive=True)
+							return self.__aggressive_stance(rg.toward(loc), recursive=True)
 
 			# help adjacent allies as second priority
 			for loc in self.local_data.unobstructed_locs:
-				if self.can_flank_enemy_safely(loc):
+				if self.__can_flank_enemy_safely(loc):
 					if not recursive:
-						if not self.friendly_running_into_me(loc):
+						if not self.__friendly_running_into_me(loc):
 							return ['move', loc]
 					else:
 						return ['move', loc]
 
 			# make sure we're not running into a friendly
-			if self.friendly_running_into_me(towards):
+			if self.__friendly_running_into_me(towards):
 				if self.local_data.safe_locs > 1:
 					for sloc in self.local_data.safe_locs:
 						if sloc != towards:
-							self.passive_stance(sloc, recursive=True)
+							self.__passive_stance(sloc, recursive=True)
 				else: # no safe locs -> let's aggressive stance for now
-					return self.aggressive_stance(towards, recursive=True)
+					return self.__aggressive_stance(towards, recursive=True)
 
 		return ['move', towards]
 
-	def aggressive_stance(self, towards, recursive=False):
+	def __aggressive_stance(self, towards, recursive=False):
 		"""Attacks neighbours, then tries to help friends, otherwise moves to towards.
 		
 		Preconditions:
@@ -456,34 +459,34 @@ class RobotCalculations:
 				for loc, bot in self.robots.iteritems():
 					if bot.player_id != self.robot.player_id:
 						if rg.dist(loc, self.robot.location) <= 3:
-							return self.aggressive_stance(rg.toward(self.robot.location, loc), recursive=True)
+							return self.__aggressive_stance(rg.toward(self.robot.location, loc), recursive=True)
 
 			# attack immediate neighbours first
-			possible_attack = self.attack_if_beside(self.robot)
+			possible_attack = self.__attack_if_beside(self.robot)
 			if possible_attack:
 				return possible_attack
 
 			# help adjacent allies as second priority
 			for loc in self.local_data.unobstructed_locs:
-				if self.can_flank_enemy_safely(loc):
+				if self.__can_flank_enemy_safely(loc):
 					if not recursive:
-						if not self.friendly_running_into_me(loc):
+						if not self.__friendly_running_into_me(loc):
 							return ['move', loc]
 					else:
 						return ['move', loc]
 
 			# make sure we're not running into a friendly
-			if self.friendly_running_into_me(towards):
+			if self.__friendly_running_into_me(towards):
 				if self.local_data.safe_locs > 1:
 					for sloc in self.local_data.safe_locs:
 						if sloc != towards:
-							self.aggressive_stance(sloc, recursive=True)
+							self.__aggressive_stance(sloc, recursive=True)
 				else: # no safe locs -> let's guard for now
-					return self.guarded_stance()
+					return self.__guarded_stance()
 
 		return ['move', towards]
 
-	def guarded_stance(self):
+	def __guarded_stance(self):
 		"""Simply guard for now.
 		
 		Preconditions:
@@ -495,7 +498,7 @@ class RobotCalculations:
 
 		return ['guard']
 
-	def spawn_evac_stance(self):
+	def __spawn_evac_stance(self):
 		"""Special case for when at spawn and will die if does not move.
 		Simply suicide for now."""
 
@@ -508,14 +511,15 @@ class RobotCalculations:
 
 	# helpers
 
-	def avg_attack(self):
+	def __avg_attack(self):
 		"""Return the average attack value of a bot attack."""
 		return (rg.settings.attack_range[0] + rg.settings.attack_range[1])/2
 
-	def attack_if_beside(self, robot):
+	def __attack_if_beside(self, robot):
+		"""Attack an adjacent location if an enemy is present."""
 
-		# taken from example bot
-		# if there are enemies around, attack them
+		#TODO : randomize
+
 		#hostiles = False
 		for loc, bot in self.game.robots.iteritems():
 			if bot.player_id != robot.player_id:
@@ -532,7 +536,7 @@ class RobotCalculations:
 		#			return ['move', adj_loc]
 
 
-	def can_flank_enemy_safely(self, location):
+	def __can_flank_enemy_safely(self, location):
 		"""Look for enemies that are beside friends, whom we can flank. If so, output True."""
 
 		try:
@@ -550,9 +554,9 @@ class RobotCalculations:
 			if bot.player_id != self.arena_data.robot.player_id:
 				if rg.wdist(loc, location) <= 1:
 					enemy_count += 1
-					if bot.hp < self.avg_attack():
+					if bot.hp < self.__avg_attack():
 						enemies_low_HP += 1
-					if not self.attack_if_beside(bot):
+					if not self.__attack_if_beside(bot):
 						return False
 
 		#if enemy_count:
@@ -563,7 +567,7 @@ class RobotCalculations:
 		return enemy_count > 0 and enemy_count != enemies_low_HP
 
 
-	def friendly_running_into_me(self, move_loc):
+	def __friendly_running_into_me(self, move_loc):
 		"""Avoid wasting a turn running into a friendly."""
 
 		if self.recursion_count < self.max_recursive:
@@ -583,10 +587,10 @@ class RobotCalculations:
 	########################################################################
 
 	def main(self):
-		"""Dispatch other methods based on situation."""
+		"""Evaluate direction and pick a stance."""
 
 		# pick direction (macro-scale)
-		direction = self.evaluate_direction()
+		direction = self.__evaluate_direction()
 		toward_loc = rg.toward(self.robot.location, direction)
 
 		print "destination :  " + str(direction) + " and predicted next move: " + str(toward_loc)
@@ -612,48 +616,47 @@ class RobotCalculations:
 					if not self.local_data.safe_locs:
 						return self.endangered_stance()
 					else:
-						return self.passive_stance(random.choice(self.local_data.safe_locs))
+						return self.__passive_stance(random.choice(self.local_data.safe_locs))
 				# can move to non-spawn
 				else:
 					if not self.local_data.safe_locs:
-						return self.guarded_stance()
+						return self.__guarded_stance()
 					else:
-						return self.passive_stance(random.choice(self.local_data.safe_locs))
+						return self.__passive_stance(random.choice(self.local_data.safe_locs))
 
 			# in one turn it will be destroyed
 			elif self.game.turn % rg.settings.spawn_every == 0:
 				# can move to non-spawn
 				if not self.local_data.normal_unobstructed_locs: 
 					if self.local_data.safe_locs:
-						return self.passive_stance(random.choice(self.local_data.safe_locs))
+						return self.__passive_stance(random.choice(self.local_data.safe_locs))
 
-				return self.spawn_evac_stance()
+				return self.__spawn_evac_stance()
 			
 			else:
 				# nothing special -> get out passively IF WE CAN
 				if toward_loc in self.local_data.safe_locs:
-					return self.passive_stance(toward_loc)
+					return self.__passive_stance(toward_loc)
 				elif self.local_data.safe_locs:
-					return self.passive_stance(random.choice(self.local_data.safe_locs))
+					return self.__passive_stance(random.choice(self.local_data.safe_locs))
 				else:
 					return cautious_stance(toward_loc)
-
-		########################################################################
+					
 
 		# normal location 
 		elif 'normal' in self.local_data.current_loc_types:
 			# early game -> ignore ignore ignore!
 			if self.game.turn < rg.settings.spawn_every / 2 - 1:
-				return self.passive_stance(toward_loc)
+				return self.__passive_stance(toward_loc)
 			
 			else: #later game
 				if self.local_data.immediate_enemies:
 					# if in a bad spot!
-					lethally_threatened = len(self.local_data.immediate_enemies) * self.avg_attack() > self.robot.hp
+					lethally_threatened = len(self.local_data.immediate_enemies) * self.__avg_attack() > self.robot.hp
 					badly_surrounded = self.local_data.immediate_enemies >= 2 or not self.arena_data.quadrant_superiority()
 					if lethally_threatened or badly_surrounded:
 						if self.local_data.safe_locs:
-							return self.passive_stance(random.choice(local_data.safe_locs))
+							return self.__passive_stance(random.choice(local_data.safe_locs))
 						elif self.local_data.immediate_friends:
 							for f in local_data.immediate_friends:
 								rec_robo_calc = RobotCalculations(f, self.game)
@@ -668,15 +671,15 @@ class RobotCalculations:
 							if not (len(self.local_data.enemies_around(e.location, e.player_id)) <= 1):
 								return self.endangered_stance()
 
-						return self.guarded_stance()
+						return self.__guarded_stance()
 
 				# not a lethal threat or no threat:
 				# stance based on our destination this time
 				if toward_loc in self.local_data.safe_locs:
 					print "entry into aggresstive from dispatcher"
-					return self.aggressive_stance(toward_loc)
+					return self.__aggressive_stance(toward_loc)
 				else:
-					return self.cautious_stance(toward_loc)
+					return self.__cautious_stance(toward_loc)
 
 			print "Not supposed to be here..."
 			return ['guard']
