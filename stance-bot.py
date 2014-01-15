@@ -329,7 +329,7 @@ class RobotCalculations:
 
 	def __init__(self, robot, game, recursion_count = 0):
 
-		self.recursion_count = recursion_count
+		self.recursion_count = recursion_count + 1 
 		self.max_recursive = 2 # only allow one recursive iteration
 
 		self.robot = robot
@@ -581,9 +581,7 @@ class RobotCalculations:
 
 		if self.recursion_count < self.max_recursive:
 			for friend in self.local_data.friends_around(move_loc, self.robot.player_id):
-				self.recursion_count += 1
 				rec_robo_calc = RobotCalculations(friend, self.game, self.recursion_count)
-				self.recursion_count -= 1
 				if move_loc in rec_robo_calc.main():
 					#print "friendlies running into me"
 					return True
@@ -666,9 +664,10 @@ class RobotCalculations:
 					if lethally_threatened or badly_surrounded:
 						if self.local_data.safe_locs:
 							return self.__passive_stance(random.choice(local_data.safe_locs))
+
 						elif self.local_data.immediate_friends:
-							for f in local_data.immediate_friends:
-								rec_robo_calc = RobotCalculations(f, self.game)
+							for f in local_data.immediate_friends:							
+								rec_robo_calc = RobotCalculations(f, self.game, self.recursion_count)
 								fmove = rec_robo_calc.main()
 								if 'move' in fmove:
 									return self.__passive_stance(fmove[1])
