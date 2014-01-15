@@ -2,6 +2,9 @@ import rg
 import itertools
 import random
 
+#import traceback
+#import sys
+
 
 class Quadrant:
 	"""A cartesian quadrant section of the arena.
@@ -163,7 +166,7 @@ class ArenaData:
 		"""Helper method. Index all robots by friend and foe."""
 
 		for loc, rob in self.game.robots.items():
-			# #print robot
+			# ##print robot
 			if rob.player_id == self.robot.player_id:
 				self.total_friends.append(rob)
 			else:
@@ -177,7 +180,7 @@ class ArenaData:
 				if self.robot.location == other_robot.location:
 					return num
 		
-		print "Severe error: bot not found!"
+		#print "Severe error: bot not found!"
 		return 0
 
 
@@ -275,8 +278,8 @@ class LocalData:
 		for vwloc in valid_and_wall_locs:
 			if 'obstacle' in rg.loc_types(vwloc):
 				for rob_loc in game.robots:
-					#print rob_loc
-					#print game.robots[rob_loc]
+					##print rob_loc
+					##print game.robots[rob_loc]
 					if rob_loc == vwloc:
 						self.valid_locs.append(vwloc)
 						if game.robots[rob_loc].player_id == robot.player_id:
@@ -297,7 +300,7 @@ class LocalData:
 				self.safe_locs.append(unobloc)
 			
 
-	def enemies_around(self, location, player_id):
+	def enemies_around(self, location, player_id, bot_loc = (0,0)):
 		"""Returns list of enemies around that tile."""
 
 		actual_enemies = []
@@ -305,18 +308,18 @@ class LocalData:
 
 		if potential_enemies:
 			for loc, bot in self.game.robots.iteritems():
-				if bot.player_id != player_id:
+				if bot.player_id != player_id and bot_loc != loc:
 					if rg.wdist(loc, location) <= 1:
 						actual_enemies.append(bot)
 
 		return actual_enemies
 
-	def friends_around(self, location, player_id):
+	def friends_around(self, location, player_id, bot_loc):
 		"""Return list of friends around that tile."""
 
 		for loc in self.game.robots:
 			if self.game.robots[loc].player_id != player_id:
-				return self.enemies_around(location, self.game.robots[loc].player_id)
+				return self.enemies_around(location, self.game.robots[loc].player_id, bot_loc)
 
 
 	########################################################################
@@ -374,7 +377,7 @@ class RobotCalculations:
 			no safe locations or where a friend used to be
 			1 or more enemies can lethally attack it"""
 
-		print "endangered_stance"
+		#print "endangered_stance"
 
 		return ['suicide']
 
@@ -385,7 +388,7 @@ class RobotCalculations:
 			no safe location exists
 			is not endangered"""
 
-		print "cautious_stance"
+		#print "cautious_stance"
 
 		# if we're already there, try to move to attack nearby enemies
 		# not random for now, maybe fix later
@@ -394,7 +397,7 @@ class RobotCalculations:
 				for loc, bot in self.arena_data.game.robots.iteritems():
 					if bot.player_id != self.robot.player_id:
 						if rg.dist(loc, self.robot.location) <= 3:
-							return self.__cautious_stance(rg.toward(self.robot.location, loc), recursive=True)
+							return self.__aggressive_stance(rg.toward(self.robot.location, loc), recursive=True)
 
 			# help adjacent allies as second priority
 			for loc in self.local_data.unobstructed_locs:
@@ -419,7 +422,8 @@ class RobotCalculations:
 		Preconditions:
 			towards safe location or where a leaving friend is."""
 
-		print "passive_stance"
+		#print "passive_stance and recursive = " + str(recursive)
+		#traceback.#print_stack(file=sys.stdout)
 
 		
 		if not recursive:
@@ -441,10 +445,12 @@ class RobotCalculations:
 						return ['move', loc]
 
 			# make sure we're not running into a friendly
+			#print "checking friendly running into me..."
 			if self.__friendly_running_into_me(towards):
 				if self.local_data.safe_locs > 1:
 					for sloc in self.local_data.safe_locs:
 						if sloc != towards:
+							"recursion check"
 							self.__passive_stance(sloc, recursive=True)
 				else: # no safe locs -> let's aggressive stance for now
 					return self.__aggressive_stance(towards, recursive=True)
@@ -458,7 +464,7 @@ class RobotCalculations:
 			towards is a safe location
 			is not endangered"""
 
-		print "aggressive_stance and recursive=" + str(recursive)
+		#print "aggressive_stance and recursive=" + str(recursive)
 
 		# if we're already there, try to move to attack nearby enemies
 		# not random for now, maybe fix later
@@ -488,6 +494,7 @@ class RobotCalculations:
 				if self.local_data.safe_locs > 1:
 					for sloc in self.local_data.safe_locs:
 						if sloc != towards:
+							#print str(sloc)
 							self.__aggressive_stance(sloc, recursive=True)
 				else: # no safe locs -> let's guard for now
 					return self.__guarded_stance()
@@ -502,7 +509,7 @@ class RobotCalculations:
 			1 or more enemies can lethally attack it
 			said enemies all have at least 1 other friendly on them"""
 
-		print "guarded_stance"
+		#print "guarded_stance"
 
 		return ['guard']
 
@@ -510,7 +517,7 @@ class RobotCalculations:
 		"""Special case for when at spawn and will die if does not move.
 		Simply suicide for now."""
 
-		print "spawn_evac_stance"
+		#print "spawn_evac_stance"
 
 		return ['suicide']
 
@@ -536,6 +543,7 @@ class RobotCalculations:
 					#if bot.hp > (local_data.immediate_enemies()-1) * avg_attack():
 					return ['attack', loc]
 
+
 		# flee if not worth time to kill anything / might be suicide
 		# if no hostiles -> carry out other game plan
 		#if hostiles:
@@ -551,7 +559,7 @@ class RobotCalculations:
 			if self.game.robots[location]:
 				return False
 		except Exception:
-			#print "no robot here"
+			##print "no robot here"
 			x=1
 
 		enemy_count = 0
@@ -568,7 +576,7 @@ class RobotCalculations:
 						return False
 
 		#if enemy_count:
-			#print "bot #" + str(robot.robot_id) + " " + str(enemy_count) + " and all enemies busy"
+			##print "bot #" + str(robot.robot_id) + " " + str(enemy_count) + " and all enemies busy"
 
 		# 0 -> false -> no enemies to flank
 		# if all enemies have low HP -> not worth the flank, AND might be a suicide
@@ -580,10 +588,12 @@ class RobotCalculations:
 		Returns true if a friendly has been predicted to be entering that location."""
 
 		if self.recursion_count < self.max_recursive:
-			for friend in self.local_data.friends_around(move_loc, self.robot.player_id):
+			for friend in self.local_data.friends_around(move_loc, self.robot.player_id, self.robot.location):
+				#print "there is a friend around"
 				rec_robo_calc = RobotCalculations(friend, self.game, self.recursion_count)
 				if move_loc in rec_robo_calc.main():
 					#print "friendlies running into me"
+					#traceback.#print_stack(file=sys.stdout)
 					return True
 
 		return False
@@ -592,21 +602,25 @@ class RobotCalculations:
 
 	#TODO refactor main() into smaller components
 
-	def main(self):
+	def main(self, given_toward=None):
 		"""Evaluate direction and pick a stance."""
 
 		# pick direction (macro-scale)
-		direction = self.__evaluate_direction()
-		toward_loc = rg.toward(self.robot.location, direction)
+		if not given_toward:
+			direction = self.__evaluate_direction()
+			toward_loc = rg.toward(self.robot.location, direction)
+		else:
+			direction = given_toward
+			toward_loc = given_toward
 
-		print "destination :  " + str(direction) + " and predicted next move: " + str(toward_loc)
+		#print "destination :  " + str(direction) + " and predicted next move: " + str(toward_loc)
 
 
 		# pick stance (micro-scale)
 
 		# extreme failure case
 		if 'invalid' in self.local_data.current_loc_types:
-			print "Robot on invalid tile; impossible!"
+			#print "Robot on invalid tile; impossible!"
 			return ['suicide']
 
 		# special cases where if does not evacuate NOW it will die
@@ -620,7 +634,7 @@ class RobotCalculations:
 				# can't move to non-spawn
 				elif not self.local_data.normal_unobstructed_locs: 
 					if not self.local_data.safe_locs:
-						return self.endangered_stance()
+						return self.__passive_stance(toward_loc) # take the move anyhow
 					else:
 						return self.__passive_stance(random.choice(self.local_data.safe_locs))
 			
@@ -640,9 +654,10 @@ class RobotCalculations:
 
 				return self.__spawn_evac_stance()
 			
+			# nothing special -> get out passively IF WE CAN
 			else:
-				# nothing special -> get out passively IF WE CAN
 				if toward_loc in self.local_data.safe_locs:
+					"usual case spawn leaving..."
 					return self.__passive_stance(toward_loc)
 				elif self.local_data.safe_locs:
 					return self.__passive_stance(random.choice(self.local_data.safe_locs))
@@ -652,9 +667,14 @@ class RobotCalculations:
 
 		# normal location 
 		elif 'normal' in self.local_data.current_loc_types:
-			# early game -> ignore ignore ignore!
+			# early game -> ignore enemies if possible
 			if self.game.turn < rg.settings.spawn_every / 2 - 1:
-				return self.__passive_stance(toward_loc)
+				if toward_loc in self.local_data.safe_locs:
+					return self.__passive_stance(toward_loc)
+				elif self.local_data.safe_locs:
+					return self.__passive_stance(random.choice(self.local_data.safe_locs))
+				else:
+					return self.__cautious_stance(toward_loc)
 			
 			else: #later game
 				if self.local_data.immediate_enemies:
@@ -683,13 +703,18 @@ class RobotCalculations:
 
 				# not a lethal threat or no threat:
 				# stance based on our destination this time
-				if toward_loc in self.local_data.safe_locs:
-					print "entry into aggressive from dispatcher"
+				elif toward_loc in self.local_data.safe_locs:
 					return self.__aggressive_stance(toward_loc)
 				else:
-					return self.__cautious_stance(toward_loc)
+					if toward_loc in self.game.robots: # someone (friendly) in the way
+						if self.local_data.safe_locs:
+							return self.__aggressive_stance(random.choice(self.local_data.safe_locs))
+						else:
+							return self.__cautious_stance(random.choice(self.local_data.unobstructed_locs))
+					else:
+						return self.__cautious_stance(toward_loc)
 
-			print "Not supposed to be here..."
+			#print "Not supposed to be here..."
 			return ['guard']
 
 	########################################################################
@@ -698,7 +723,7 @@ class Robot:
 
 	def act(self, game):
 
-		print "robot ID: " + str(self.robot_id)
+		#print "robot ID: " + str(self.robot_id)
 
 		# set up globals
 		random.seed()
@@ -709,7 +734,7 @@ class Robot:
 
 		# prevent move to one's own tile
 		if self.location in move:
-			print "Moving to itself... fix before it gets here!"
+			#print "Moving to itself... fix before it gets here!"
 			return ['guard']
 
 		return move
