@@ -367,9 +367,9 @@ class RobotCalculations:
 	def __evaluate_direction(self):
 		"""Set robot's ultimate direction based on situation of quadrant."""
 
-		# first segment of 10 turn cycle -> head to center
-		#if self.game.turn <= rg.settings.spawn_every / 3:
-		if self.game.turn % rg.settings.spawn_every <= 3 and self.game.turn % rg.settings.spawn_every != 0:
+		# first few turns -> head to center
+		if self.game.turn <= 3:
+		#if self.game.turn % rg.settings.spawn_every <= 3 and self.game.turn % rg.settings.spawn_every != 0:
 			return rg.CENTER_POINT
 		# later game -> context specific
 		else:
@@ -381,7 +381,9 @@ class RobotCalculations:
 			# not grouped -> regroup
 			# more enemies here than twin -> regroup (in twin)
 			# no enemies -> regroup
-			return self.arena_data.get_regroup_point()
+
+			# added minor randomness to help break "traffic jams"
+			return (self.arena_data.get_regroup_point()[0] + random.randint(-1,1) , self.arena_data.get_regroup_point()[1] + random.randint(-1,1))
 
 
 	########################################################################
