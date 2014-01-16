@@ -258,7 +258,8 @@ class LocalData:
 	Public methods:
 		Robot[] enemies_around(location, player_id)
 		Robot[] friends_around(location, player_id)
-		Location[] least_dangerous_nonsafe_locs()"""
+		Location[] least_dangerous_nonsafe_locs()
+		Location[] safe_locs_non_spawn()"""
 
 	def __init__(self, robot, game):
 
@@ -337,7 +338,13 @@ class LocalData:
 
 		return least_dangerous_locs
 
+	def safe_locs_non_spawn(self):
+		sfns = []
+		for loc in self.safe_locs:
+			if 'spawn' not in rg.loc_types(loc):
+				sfns.append(loc)
 
+		return sfns
 
 
 	########################################################################
@@ -673,7 +680,11 @@ class RobotCalculations:
 					if not self.local_data.safe_locs:
 						return self.__guarded_stance()
 					else:
-						return self.__passive_stance(random.choice(self.local_data.safe_locs))
+						sfns =  self.local_data.safe_locs_non_spawn()
+						if sfns:
+							return self.__passive_stance(random.choice(sfns))
+						else:
+							return self.__passive_stance(random.choice(self.local_data.normal_unobstructed_locs))
 
 			# in one turn it will be destroyed
 			elif self.game.turn % rg.settings.spawn_every == 0:
