@@ -257,7 +257,8 @@ class LocalData:
 
 	Public methods:
 		Robot[] enemies_around(location, player_id)
-		Robot[] friends_around(location, player_id)"""
+		Robot[] friends_around(location, player_id)
+		Location[] least_dangerous_nonsafe_locs()"""
 
 	def __init__(self, robot, game):
 
@@ -320,6 +321,23 @@ class LocalData:
 		for loc in self.game.robots:
 			if self.game.robots[loc].player_id != player_id:
 				return self.enemies_around(location, self.game.robots[loc].player_id, bot_loc)
+
+	def least_dangerous_nonsafe_locs(self):
+		"""Returns 'least dangerous' (less enemies around) non-safe locations to move to.
+		List of locations returned have the same number of enemies around."""
+
+		least_dangerous_locs = []
+		least_enemies_num = 5 # impossibly high
+
+		for loc in self.unobstructed_locs:
+			num_enemies = len(self.enemies_around(loc, self.robot.player_id))
+			if least_enemies_num >= num_enemies:
+				least_dangerous_locs.append(loc)
+				least_enemies_num = num_enemies
+
+		return least_dangerous_locs
+
+
 
 
 	########################################################################
@@ -523,9 +541,7 @@ class RobotCalculations:
 		"""Special case for when at spawn and will die if does not move.
 		Simply suicide for now."""
 
-		#print "spawn_evac_stance"
-
-		return ['suicide']
+		return ['suicide'] 
 
 
 	########################################################################
@@ -643,7 +659,10 @@ class RobotCalculations:
 				# can't move to non-spawn
 				elif not self.local_data.normal_unobstructed_locs: 
 					if not self.local_data.safe_locs:
-						return self.__passive_stance(toward_loc) # take the move anyhow
+						if towards in self.local_data.normal_unobstructed_locs:
+							return self.__passive_stance(toward_loc) # take the move even if not safe
+						else: # take random of best non-obstructed location
+							return self.__passive_stance(random.choice(self.local_data.least_dangerous_nonsafe_locs()))
 					else:
 						return self.__passive_stance(random.choice(self.local_data.safe_locs))
 			
@@ -657,7 +676,7 @@ class RobotCalculations:
 			# in one turn it will be destroyed
 			elif self.game.turn % rg.settings.spawn_every == 0:
 				# can move to non-spawn
-				if not self.local_data.normal_unobstructed_locs: 
+				if self.local_data.normal_unobstructed_locs: 
 					if self.local_data.safe_locs:
 						return self.__passive_stance(random.choice(self.local_data.safe_locs))
 					else:
