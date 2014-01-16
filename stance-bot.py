@@ -166,7 +166,7 @@ class ArenaData:
 		"""Helper method. Index all robots by friend and foe."""
 
 		for loc, rob in self.game.robots.items():
-			# ##print robot
+			#print robot
 			if rob.player_id == self.robot.player_id:
 				self.total_friends.append(rob)
 			else:
@@ -278,8 +278,8 @@ class LocalData:
 		for vwloc in valid_and_wall_locs:
 			if 'obstacle' in rg.loc_types(vwloc):
 				for rob_loc in game.robots:
-					##print rob_loc
-					##print game.robots[rob_loc]
+					#print rob_loc
+					#print game.robots[rob_loc]
 					if rob_loc == vwloc:
 						self.valid_locs.append(vwloc)
 						if game.robots[rob_loc].player_id == robot.player_id:
@@ -349,8 +349,9 @@ class RobotCalculations:
 	def __evaluate_direction(self):
 		"""Set robot's ultimate direction based on situation of quadrant."""
 
-		# very early game -> head to center
-		if self.game.turn <= rg.settings.spawn_every / 3:
+		# first segment of 10 turn cycle -> head to center
+		#if self.game.turn <= rg.settings.spawn_every / 3:
+		if self.game.turn % rg.settings.spawn_every <= 3 and self.game.turn % rg.settings.spawn_every != 0:
 			return rg.CENTER_POINT
 		# later game -> context specific
 		else:
@@ -371,7 +372,7 @@ class RobotCalculations:
 	# TODO put reused code in seperate methods
 
 	def __endangered_stance(self):
-		"""Simply suicide for now.
+		"""Attack neighbouring enemies if they exist, else guard.
 		
 		Preconditions:
 			no safe locations or where a friend used to be
@@ -379,7 +380,12 @@ class RobotCalculations:
 
 		#print "endangered_stance"
 
-		return ['suicide']
+		# attack immediate neighbours first
+		possible_attack = self.__attack_if_beside(self.robot)
+		if possible_attack:
+			return possible_attack
+		else:
+			return ['guard']
 
 	def __cautious_stance(self, towards, recursive = False):
 		"""Attacks neighbours, then tries to help friends, otherwise attacks towards.
@@ -513,7 +519,7 @@ class RobotCalculations:
 
 		return ['guard']
 
-	def __spawn_evac_stance(self):
+	def __spawn_trapped_stance(self):
 		"""Special case for when at spawn and will die if does not move.
 		Simply suicide for now."""
 
@@ -559,7 +565,7 @@ class RobotCalculations:
 			if self.game.robots[location]:
 				return False
 		except Exception:
-			##print "no robot here"
+			#print "no robot here"
 			x=1
 
 		enemy_count = 0
@@ -576,7 +582,7 @@ class RobotCalculations:
 						return False
 
 		#if enemy_count:
-			##print "bot #" + str(robot.robot_id) + " " + str(enemy_count) + " and all enemies busy"
+			#print "bot #" + str(robot.robot_id) + " " + str(enemy_count) + " and all enemies busy"
 
 		# 0 -> false -> no enemies to flank
 		# if all enemies have low HP -> not worth the flank, AND might be a suicide
@@ -622,6 +628,9 @@ class RobotCalculations:
 		if 'invalid' in self.local_data.current_loc_types:
 			#print "Robot on invalid tile; impossible!"
 			return ['suicide']
+		#if you're likely to die surrouded by enemies attacking you -> suicide
+		elif len(self.local_data.immediate_enemies) * (self.__avg_attack()+rg.settings.attack_range[0])/2  > self.robot.hp:
+			return ['suicide'] 
 
 		# special cases where if does not evacuate NOW it will die
 		elif 'spawn' in self.local_data.current_loc_types:
@@ -629,8 +638,8 @@ class RobotCalculations:
 			# check that next turn it can leave to a 'normal' location
 			if self.game.turn % rg.settings.spawn_every == rg.settings.spawn_every - 1:
 				# can't move anywhere
-				if not self.local_data.normal_unobstructed_locs: 
-					return self.endangered_stance()
+				if not self.local_data.unobstructed_locs: 
+					return self.__endangered_stance()
 				# can't move to non-spawn
 				elif not self.local_data.normal_unobstructed_locs: 
 					if not self.local_data.safe_locs:
@@ -651,11 +660,14 @@ class RobotCalculations:
 				if not self.local_data.normal_unobstructed_locs: 
 					if self.local_data.safe_locs:
 						return self.__passive_stance(random.choice(self.local_data.safe_locs))
-
-				return self.__spawn_evac_stance()
+					else:
+						# can move out, but not safe: rush out regardless!
+						return self.__passive_stance(random.choice(self.local_data.normal_unobstructed_locs))
+				# can't move to non-spawn
+				return self.__spawn_trapped_stance()
 			
-			# nothing special -> get out passively IF WE CAN
-			else:
+			# nothing special -> get out passively if we can, if first turn, else 'normal'
+			elif self.game.turn < rg.settings.spawn_every:
 				if toward_loc in self.local_data.safe_locs:
 					"usual case spawn leaving..."
 					return self.__passive_stance(toward_loc)
@@ -665,8 +677,8 @@ class RobotCalculations:
 					return self.__cautious_stance(toward_loc)
 					
 
-		# normal location 
-		elif 'normal' in self.local_data.current_loc_types:
+		# normal location or 10 turns after start in a spawn location
+		if 'normal' in self.local_data.current_loc_types or ('spawn' in self.local_data.current_loc_types and game.turn >= rg.settings.spawn_every):
 			# early game -> ignore enemies if possible
 			if self.game.turn < rg.settings.spawn_every / 2 - 1:
 				if toward_loc in self.local_data.safe_locs:
@@ -679,9 +691,8 @@ class RobotCalculations:
 			else: #later game
 				if self.local_data.immediate_enemies:
 					# if in a bad spot!
-					lethally_threatened = len(self.local_data.immediate_enemies) * self.__avg_attack() > self.robot.hp
 					badly_surrounded = self.local_data.immediate_enemies >= 2 or not self.arena_data.quadrant_superiority()
-					if lethally_threatened or badly_surrounded:
+					if badly_surrounded:
 						if self.local_data.safe_locs:
 							return self.__passive_stance(random.choice(local_data.safe_locs))
 
