@@ -235,9 +235,11 @@ class ArenaData:
 				return closest_robots[0].location
 
 	def quadrant_inferiority(self):
-		"""Returns true if the number of enemies is significantly greater than the number of friends"""
+		"""Returns true if the number of enemies is significantly greater than the number of friends, or, if there are
+		few friends, if the number of enemies is >= to #friends."""
 		#print "quad friend #: " + str(len(self.get_quad_friends())) + " and quad foe #: " + str(len(self.get_quad_foes()))
-		return len(self.get_quad_friends()) * 1.5 < len(self.get_quad_foes())
+		return len(self.get_quad_friends()) * 1.5 < len(self.get_quad_foes()) or (
+			len(self.get_quad_friends()) < 2 and len(self.get_quad_foes()) >= len(self.get_quad_friends()))
 
 
 	########################################################################
