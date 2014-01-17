@@ -685,11 +685,13 @@ class RobotCalculations:
 							sfns =  self.local_data.safe_locs_non_spawn()
 							if sfns:
 								return self.__passive_stance(random.choice(sfns))
-						else:
-							# can move out, but not safe: rush out regardless!
-							return self.__passive_stance(random.choice(self.local_data.normal_unobstructed_locs))
-					# can't move to non-spawn
-					return self.__spawn_trapped_stance()
+						
+						# can move out, but not safe: rush out regardless!
+						return self.__passive_stance(random.choice(self.local_data.normal_unobstructed_locs))
+					
+					else:
+						# can't move to non-spawn
+						return self.__spawn_trapped_stance()
 
 
 			#normal or spawn in 'non-urgent' turns
