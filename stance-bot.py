@@ -297,6 +297,8 @@ class LocalData:
 
  			if not self.enemies_around(unobloc, robot.player_id):
 				self.safe_locs.append(unobloc)
+
+		#print self.normal_unobstructed_locs
 			
 
 	def enemies_around(self, location, player_id, bot_loc = (0,0)):
@@ -480,7 +482,7 @@ class RobotCalculations:
 					for sloc in self.local_data.safe_locs:
 						if sloc != towards:
 							#print "recursion check"
-							self.__passive_stance(sloc, recursive=False)
+							self.__passive_stance(sloc, recursive=True)
 				else: # no safe locs -> let's aggressive stance for now
 					return self.__aggressive_stance(towards, recursive=False)
 
@@ -634,9 +636,12 @@ class RobotCalculations:
 		if 'invalid' in self.local_data.current_loc_types:
 			#print "Robot on invalid tile; impossible!"
 			return ['suicide']
-		#if you're likely to die surrouded by enemies attacking you -> suicide
+		#if you're likely to die surrouded by enemies attacking you -> run or suicide
 		elif len(self.local_data.immediate_enemies) * (self.__avg_attack()+rg.settings.attack_range[0])/2  > self.robot.hp:
-			return ['suicide'] 
+			if self.local_data.safe_locs:
+				return self.__passive_stance(toward_loc)
+			else:
+				return ['suicide']
 
 		# if early game spawn
 		elif 'spawn' in self.local_data.current_loc_types and self.game.turn < rg.settings.spawn_every-1:
@@ -660,9 +665,9 @@ class RobotCalculations:
 					elif not self.local_data.normal_unobstructed_locs: 
 						if not self.local_data.safe_locs:
 							if toward_loc in self.local_data.unobstructed_locs:
-								return self.__passive_stance(toward_loc) # take the move even if not safe
+								return ['move', toward_loc] # take the move even if not safe
 							else: # take random of best non-obstructed location
-								return self.__passive_stance(random.choice(self.local_data.least_dangerous_nonsafe_locs()))
+								return ['move', random.choice(self.local_data.least_dangerous_nonsafe_locs()) ]
 						else:
 							return self.__passive_stance(random.choice(self.local_data.safe_locs))
 				
@@ -685,9 +690,8 @@ class RobotCalculations:
 							sfns =  self.local_data.safe_locs_non_spawn()
 							if sfns:
 								return self.__passive_stance(random.choice(sfns))
-						
 						# can move out, but not safe: rush out regardless!
-						return self.__passive_stance(random.choice(self.local_data.normal_unobstructed_locs))
+						return ['move', random.choice(self.local_data.normal_unobstructed_locs)]
 					
 					else:
 						# can't move to non-spawn
@@ -701,6 +705,7 @@ class RobotCalculations:
 				return self.__passive_stance(toward_loc)
 
 			else: #later game
+				#print self.local_data.immediate_enemies
 				if self.local_data.immediate_enemies:
 					# if in a bad spot!
 					badly_surrounded = len(self.local_data.immediate_enemies) >= 2 or (len(self.local_data.immediate_enemies) >= 1 and self.arena_data.quadrant_inferiority())
