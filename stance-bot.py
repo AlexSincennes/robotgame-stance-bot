@@ -741,7 +741,7 @@ class RobotCalculations:
 
 				# not a lethal threat or no threat:
 				# stance based on our destination this time
-				elif toward_loc in self.local_data.safe_locs:
+				if toward_loc in self.local_data.safe_locs:
 					return self.__aggressive_stance(toward_loc)
 				else:
 					if toward_loc in self.game.robots: # someone (friendly) in the way
