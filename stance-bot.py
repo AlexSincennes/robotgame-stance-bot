@@ -485,7 +485,7 @@ class RobotCalculations:
 			towards is a safe location
 			is not endangered"""
 
-		print "aggressive_stance and recursive=" + str(recursive)
+		#print "aggressive_stance and recursive=" + str(recursive)
 
 		if not recursive:
 			# attack immediate neighbours first
@@ -701,17 +701,17 @@ class RobotCalculations:
 					return self.__cautious_stance(toward_loc)
 			
 			else: #later game
-				print "enemies around me: " + str(self.local_data.immediate_enemies)
-				print "friends around me: " + str(self.local_data.immediate_friends)
 				if self.local_data.immediate_enemies:
-					print "immediate enemies"
 					# if in a bad spot!
 					badly_surrounded = self.local_data.immediate_enemies >= 2 or (self.local_data.immediate_enemies >= 1 and not self.arena_data.quadrant_superiority())
-					print "badly surrounded: " + str(badly_surrounded)
+					#print "badly surrounded: " + str(badly_surrounded)
 					
 					if badly_surrounded:
 						if self.local_data.safe_locs:
-							return self.__passive_stance(random.choice(self.local_data.safe_locs))
+							if toward_loc in self.local_data.safe_locs:
+								return self.__passive_stance(toward_loc)
+							else:
+								return self.__passive_stance(random.choice(self.local_data.safe_locs))
 
 						elif self.local_data.immediate_friends:
 							for f in local_data.immediate_friends:							
@@ -750,7 +750,7 @@ class Robot:
 
 	def act(self, game):
 
-		print "robot ID: " + str(self.robot_id)
+		#print "robot ID: " + str(self.robot_id)
 
 		# set up globals
 		random.seed()
