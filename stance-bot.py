@@ -680,7 +680,9 @@ class RobotCalculations:
 					# can move to non-spawn
 					if self.local_data.normal_unobstructed_locs: 
 						if self.local_data.safe_locs:
-							return self.__passive_stance(random.choice(self.local_data.safe_locs))
+							sfns =  self.local_data.safe_locs_non_spawn()
+							if sfns:
+								return self.__passive_stance(random.choice(sfns))
 						else:
 							# can move out, but not safe: rush out regardless!
 							return self.__passive_stance(random.choice(self.local_data.normal_unobstructed_locs))
