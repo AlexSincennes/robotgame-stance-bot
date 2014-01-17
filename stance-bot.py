@@ -378,6 +378,7 @@ class RobotCalculations:
 			# if less enemies here than in our twin --> TODO wrapper for twin foes
 			if len(self.arena_data.get_quad_foes() ) < len(self.arena_data.get_quadrant(self.arena_data.get_twin()).quad_foes ):
 				# get closest enemy and set it as destination
+				#print "going for closest foe at " + str(self.arena_data.find_closest_foe())
 				return self.arena_data.find_closest_foe()
 
 			# not grouped -> regroup
@@ -477,9 +478,9 @@ class RobotCalculations:
 					for sloc in self.local_data.safe_locs:
 						if sloc != towards:
 							#print "recursion check"
-							self.__passive_stance(sloc, recursive=True)
+							self.__passive_stance(sloc, recursive=False)
 				else: # no safe locs -> let's aggressive stance for now
-					return self.__aggressive_stance(towards, recursive=True)
+					return self.__aggressive_stance(towards, recursive=False)
 
 		return ['move', towards]
 
@@ -666,13 +667,13 @@ class RobotCalculations:
 					# can move to non-spawn
 					else:
 						if not self.local_data.safe_locs:
-							return self.__guarded_stance()
+							return self.__endangered_stance()
 						else:
 							sfns =  self.local_data.safe_locs_non_spawn()
 							if sfns:
 								return self.__passive_stance(random.choice(sfns))
 							else:
-								return self.__passive_stance(random.choice(self.local_data.normal_unobstructed_locs))
+								return self.__endangered_stance()
 
 				# in one turn it will be destroyed
 				elif self.game.turn % rg.settings.spawn_every == 0:
