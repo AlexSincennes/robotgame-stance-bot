@@ -103,7 +103,7 @@ class ArenaData:
 		Quadrant get_current_quadrant()
 		Location get_regroup_point()
 		Loaction find_closest_foe()
-		boolean quadrant_superiority()"""
+		boolean quadrant_inferiority()"""
 
 
 	def __init__(self, robot, game, local_data):
@@ -234,10 +234,10 @@ class ArenaData:
 			else: # only one robot, pick him
 				return closest_robots[0].location
 
-	def quadrant_superiority(self):
-		"""Returns true if #friends >= #enemies in this quadrant"""
+	def quadrant_inferiority(self):
+		"""Returns true if the number of enemies is significantly greater than the number of friends"""
 		#print "quad friend #: " + str(len(self.get_quad_friends())) + " and quad foe #: " + str(len(self.get_quad_foes()))
-		return len(self.get_quad_friends()) >= len(self.get_quad_foes())
+		return len(self.get_quad_friends()) * 1.5 < len(self.get_quad_foes())
 
 
 	########################################################################
@@ -656,7 +656,7 @@ class RobotCalculations:
 					# can't move to non-spawn
 					elif not self.local_data.normal_unobstructed_locs: 
 						if not self.local_data.safe_locs:
-							if toward_loc in self.local_data.normal_unobstructed_locs:
+							if toward_loc in self.local_data.unobstructed_locs:
 								return self.__passive_stance(toward_loc) # take the move even if not safe
 							else: # take random of best non-obstructed location
 								return self.__passive_stance(random.choice(self.local_data.least_dangerous_nonsafe_locs()))
@@ -696,7 +696,7 @@ class RobotCalculations:
 			else: #later game
 				if self.local_data.immediate_enemies:
 					# if in a bad spot!
-					badly_surrounded = len(self.local_data.immediate_enemies) >= 2 or (len(self.local_data.immediate_enemies) >= 1 and not self.arena_data.quadrant_superiority())
+					badly_surrounded = len(self.local_data.immediate_enemies) >= 2 or (len(self.local_data.immediate_enemies) >= 1 and self.arena_data.quadrant_inferiority())
 					#print "badly surrounded: " + str(badly_surrounded)
 					
 					if badly_surrounded:
