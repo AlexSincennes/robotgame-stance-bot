@@ -471,7 +471,7 @@ class RobotCalculations:
 				if self.local_data.safe_locs > 1:
 					for sloc in self.local_data.safe_locs:
 						if sloc != towards:
-							"recursion check"
+							#print "recursion check"
 							self.__passive_stance(sloc, recursive=True)
 				else: # no safe locs -> let's aggressive stance for now
 					return self.__aggressive_stance(towards, recursive=True)
@@ -609,17 +609,14 @@ class RobotCalculations:
 
 	#TODO refactor main() into smaller components
 
-	def main(self, given_toward=None):
+	def main(self):
 		"""Evaluate direction and pick a stance."""
 
 		# pick direction (macro-scale)
-		if not given_toward:
-			direction = self.__evaluate_direction()
-			toward_loc = rg.toward(self.robot.location, direction)
-		else:
-			direction = given_toward
-			toward_loc = given_toward
-
+		
+		direction = self.__evaluate_direction()
+		toward_loc = rg.toward(self.robot.location, direction)
+		
 		#print "destination :  " + str(direction) + " and predicted next move: " + str(toward_loc)
 
 
@@ -714,11 +711,11 @@ class RobotCalculations:
 								return self.__passive_stance(random.choice(self.local_data.safe_locs))
 
 						elif self.local_data.immediate_friends:
-							for f in local_data.immediate_friends:							
+							for f in self.local_data.immediate_friends:							
 								rec_robo_calc = RobotCalculations(f, self.game, self.recursion_count)
 								fmove = rec_robo_calc.main()
 								if 'move' in fmove:
-									return self.__passive_stance(fmove[1])
+									return self.__passive_stance(f.location)
 
 						# other cases where robot is lethally threatened:
 						# if all enemies 'occupied' with friends, guarded stance
@@ -730,7 +727,7 @@ class RobotCalculations:
 						return self.__guarded_stance()
 
 				#no threat or low threat
-				elif toward_loc in self.local_data.safe_locs:
+				if toward_loc in self.local_data.safe_locs:
 					return self.__aggressive_stance(toward_loc)
 				else:
 					if toward_loc in self.game.robots: # someone (friendly) in the way
