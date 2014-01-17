@@ -121,7 +121,7 @@ class ArenaData:
 		self.current_quad_num = self.__find_quad()
 
 		self.group = []
-		self.__find_group(self.group, [], local_data)
+		self.__find_group(self.robot, self.group, [], local_data)
 
 		self.regroup_quad_num = self.__find_regroup_quad()
 
@@ -146,20 +146,20 @@ class ArenaData:
 
 
 
-	def __find_group(self, group, visited, local_data):
+	def __find_group(self, robot, group, visited, local_data):
 		"""Helper method. Finds coherent group robot is attached to, if exists"""
 
 		# find immediate friends
-		for friendly_robot in local_data.immediate_friends:
+		for friendly_robot in local_data.friends_around(robot.location, robot.player_id, robot.location):
 			if not friendly_robot in group:
 				group.append(friendly_robot)
 
 
 		# recursively iterate through the others
-		visited.append(self.robot)
+		visited.append(robot)
 		for rob in group:
 			if not rob in visited:
-				self._find_group(group, visited, LocalData(rob, local_data.game))
+				self.__find_group(rob, group, visited, local_data)
 
 
 	def __index_bots(self):
@@ -257,7 +257,7 @@ class LocalData:
 
 	Public methods:
 		Robot[] enemies_around(location, player_id)
-		Robot[] friends_around(location, player_id)
+		Robot[] friends_around(location, player_id, bot_loc)
 		Location[] least_dangerous_nonsafe_locs()
 		Location[] safe_locs_non_spawn()"""
 
@@ -278,21 +278,12 @@ class LocalData:
 
 		self.valid_locs = []
 		for vwloc in valid_and_wall_locs:
-			if 'obstacle' in rg.loc_types(vwloc):
-				for rob_loc in game.robots:
-					#print rob_loc
-					#print game.robots[rob_loc]
-					if rob_loc == vwloc:
-						self.valid_locs.append(vwloc)
-						if game.robots[rob_loc].player_id == robot.player_id:
-							self.immediate_friends.append(game.robots[rob_loc])
-						else:
-							self.immediate_enemies.append(game.robots[rob_loc])
-
-				# if obstacle and not robot location -> not 'valid'
-			else:
+			if not 'obstacle' in rg.loc_types(vwloc):
 				self.valid_locs.append(vwloc)
 				self.unobstructed_locs.append(vwloc)
+
+		self.immediate_enemies = self.enemies_around(self.robot.location, self.robot.player_id)
+		self.immediate_friends = self.friends_around(self.robot.location, self.robot.player_id, self.robot.location)
 
 		for unobloc in self.unobstructed_locs:
 			if not 'spawn' in rg.loc_types(unobloc):
@@ -668,7 +659,7 @@ class RobotCalculations:
 				# can't move to non-spawn
 				elif not self.local_data.normal_unobstructed_locs: 
 					if not self.local_data.safe_locs:
-						if towards in self.local_data.normal_unobstructed_locs:
+						if toward_loc in self.local_data.normal_unobstructed_locs:
 							return self.__passive_stance(toward_loc) # take the move even if not safe
 						else: # take random of best non-obstructed location
 							return self.__passive_stance(random.choice(self.local_data.least_dangerous_nonsafe_locs()))
@@ -712,7 +703,7 @@ class RobotCalculations:
 		# normal location or 10 turns after start in a spawn location
 		if 'normal' in self.local_data.current_loc_types or ('spawn' in self.local_data.current_loc_types and game.turn >= rg.settings.spawn_every):
 			# early game -> ignore enemies if possible
-			if self.game.turn < rg.settings.spawn_every / 2 - 1:
+			if self.game.turn < 3:
 				if toward_loc in self.local_data.safe_locs:
 					return self.__passive_stance(toward_loc)
 				elif self.local_data.safe_locs:
@@ -721,12 +712,16 @@ class RobotCalculations:
 					return self.__cautious_stance(toward_loc)
 			
 			else: #later game
+				#print "enemies around me: " + str(self.local_data.immediate_enemies)
+				#print "friends around me: " + str(self.local_data.immediate_friends)
 				if self.local_data.immediate_enemies:
 					# if in a bad spot!
-					badly_surrounded = self.local_data.immediate_enemies >= 2 or not self.arena_data.quadrant_superiority()
+					badly_surrounded = self.local_data.immediate_enemies >= 2 #or not self.arena_data.quadrant_superiority()
+					#print "badly surrounded: " + str(badly_surrounded)
+					
 					if badly_surrounded:
 						if self.local_data.safe_locs:
-							return self.__passive_stance(random.choice(local_data.safe_locs))
+							return self.__passive_stance(random.choice(self.local_data.safe_locs))
 
 						elif self.local_data.immediate_friends:
 							for f in local_data.immediate_friends:							
@@ -757,8 +752,8 @@ class RobotCalculations:
 					else:
 						return self.__cautious_stance(toward_loc)
 
-			#print "Not supposed to be here..."
-			return ['guard']
+		#print "Not supposed to be here..."
+		return ['guard']
 
 	########################################################################
 
