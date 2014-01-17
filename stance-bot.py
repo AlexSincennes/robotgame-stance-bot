@@ -185,7 +185,7 @@ class ArenaData:
 
 
 	def get_quad_friends(self):
-		return self.quadrants[self.current_quad_num-1].friends
+		return self.quadrants[self.current_quad_num-1].quad_friends
 
 	def get_quad_foes(self):
 		return self.quadrants[self.current_quad_num-1].quad_foes
@@ -236,6 +236,7 @@ class ArenaData:
 
 	def quadrant_superiority(self):
 		"""Returns true if #friends >= #enemies in this quadrant"""
+		#print "quad friend #: " + str(len(self.get_quad_friends())) + " and quad foe #: " + str(len(self.get_quad_foes()))
 		return len(self.get_quad_friends()) >= len(self.get_quad_foes())
 
 
@@ -452,18 +453,22 @@ class RobotCalculations:
 		#print "passive_stance and recursive = " + str(recursive)
 		#traceback.#print_stack(file=sys.stdout)
 
-		
-		if not recursive:
+		# move to towards if safe, else move to other safe, else move into friend
+		if self.local_data.safe_locs:
+			if not towards in self.local_data.safe_locs:
+				towards = random.choice(self.local_data.safe_locs)
 
-			# help adjacent allies as first priority
-			if self.game.turn < 3:
-				for loc in self.local_data.unobstructed_locs:
-					if self.__can_flank_enemy_safely(loc):
-						if not recursive:
-							if not self.__friendly_running_into_me(loc):
-								return ['move', loc]
-						else:
-							return ['move', loc]
+		elif self.local_data.immediate_friends:
+			for f in self.local_data.immediate_friends:							
+				rec_robo_calc = RobotCalculations(f, self.game, self.recursion_count)
+				fmove = rec_robo_calc.main()
+				if 'move' in fmove:
+					towards = f.location
+		else:
+			return self.__endangered_stance()
+
+	
+		if not recursive:
 
 			# make sure we're not running into a friendly
 			#print "checking friendly running into me..."
@@ -634,12 +639,7 @@ class RobotCalculations:
 		elif 'spawn' in self.local_data.current_loc_types and self.game.turn < rg.settings.spawn_every-1:
 		
 			#get out passively if we can
-			if toward_loc in self.local_data.safe_locs:
-				return self.__passive_stance(toward_loc)
-			elif self.local_data.safe_locs:
-				return self.__passive_stance(random.choice(self.local_data.safe_locs))
-			else:
-				return self.__cautious_stance(toward_loc)
+			return self.__passive_stance(toward_loc)
 					
 
 		# normal location or rg.settings.spawn_every-1 turns after start in a spawn location
@@ -686,51 +686,27 @@ class RobotCalculations:
 					# can't move to non-spawn
 					return self.__spawn_trapped_stance()
 
+
 			#normal or spawn in 'non-urgent' turns
 
 			# early game -> ignore enemies if possible
 			if self.game.turn < 3:
-				if toward_loc in self.local_data.safe_locs:
-					return self.__passive_stance(toward_loc)
-				elif self.local_data.safe_locs:
-					return self.__passive_stance(random.choice(self.local_data.safe_locs))
-				else:
-					return self.__cautious_stance(toward_loc)
-			
+				return self.__passive_stance(toward_loc)
+
 			else: #later game
 				if self.local_data.immediate_enemies:
 					# if in a bad spot!
-					badly_surrounded = self.local_data.immediate_enemies >= 2 or (self.local_data.immediate_enemies >= 1 and not self.arena_data.quadrant_superiority())
+					badly_surrounded = len(self.local_data.immediate_enemies) >= 2 or (len(self.local_data.immediate_enemies) >= 1 and not self.arena_data.quadrant_superiority())
 					#print "badly surrounded: " + str(badly_surrounded)
 					
 					if badly_surrounded:
-						if self.local_data.safe_locs:
-							if toward_loc in self.local_data.safe_locs:
-								return self.__passive_stance(toward_loc)
-							else:
-								return self.__passive_stance(random.choice(self.local_data.safe_locs))
-
-						elif self.local_data.immediate_friends:
-							for f in self.local_data.immediate_friends:							
-								rec_robo_calc = RobotCalculations(f, self.game, self.recursion_count)
-								fmove = rec_robo_calc.main()
-								if 'move' in fmove:
-									return self.__passive_stance(f.location)
-
-						# other cases where robot is lethally threatened:
-						# if all enemies 'occupied' with friends, guarded stance
-						# else endangered stance (surrounded with no help)
-						for e in self.local_data.immediate_enemies:
-							if not (len(self.local_data.enemies_around(e.location, e.player_id)) <= 1):
-								return self.__endangered_stance()
-
-						return self.__guarded_stance()
+						return self.__passive_stance(toward_loc)
 
 				#no threat or low threat
 				if toward_loc in self.local_data.safe_locs:
 					return self.__aggressive_stance(toward_loc)
 				else:
-					if toward_loc in self.game.robots: # someone (friendly) in the way
+					if toward_loc in self.local_data.immediate_friends:
 						if self.local_data.safe_locs:
 							return self.__aggressive_stance(random.choice(self.local_data.safe_locs))
 						else:
