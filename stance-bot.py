@@ -338,12 +338,7 @@ class LocalData:
 		return least_dangerous_locs
 
 	def safe_locs_non_spawn(self):
-		sfns = []
-		for loc in self.safe_locs:
-			if 'spawn' not in rg.loc_types(loc):
-				sfns.append(loc)
-
-		return sfns
+		return [loc for loc in self.safe_locs if 'spawn' not in rg.loc_types(loc)]
 
 
 	########################################################################
